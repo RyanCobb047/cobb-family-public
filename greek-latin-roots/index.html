@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roots Quest</title>
+  <style>
+    :root {
+      --bg: #f6f8ff;
+      --card: #ffffff;
+      --ink: #24304a;
+      --accent: #5865f2;
+      --accent-2: #19a974;
+      --warn: #ef6c57;
+      --soft: #dfe7ff;
+      --gold: #ffcf5c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #eef3ff, #f8fbff);
+      color: var(--ink);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .hero, .panel, .card { background: var(--card); border-radius: 20px; box-shadow: 0 12px 35px rgba(64, 86, 155, 0.12); }
+    .hero { padding: 24px; display: grid; gap: 12px; margin-bottom: 20px; }
+    h1, h2, h3 { margin: 0; }
+    .sub { color: #5b6a8d; line-height: 1.5; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    button, select {
+      border: none; border-radius: 14px; padding: 12px 16px; font-weight: 700;
+      font-size: 15px;
+    }
+    button { cursor: pointer; background: var(--accent); color: white; }
+    select { background: #f4f7ff; color: var(--ink); border: 2px solid #dde5ff; }
+    button.secondary { background: #eef2ff; color: var(--accent); }
+    button.green { background: var(--accent-2); }
+    button.gold { background: var(--gold); color: #5a4200; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .panel { padding: 16px; text-align: center; }
+    .big { font-size: 1.7rem; font-weight: 800; }
+    .label { font-size: .9rem; color: #6e7a96; }
+    .grid { display: grid; grid-template-columns: 2.2fr 1fr; gap: 20px; }
+    .card { padding: 20px; }
+    .question { font-size: 1.2rem; margin: 14px 0 18px; line-height: 1.5; }
+    .answers { display: grid; gap: 10px; }
+    .answer { text-align: left; padding: 14px; background: #f7f9ff; color: var(--ink); border: 2px solid transparent; border-radius: 14px; font-weight: 700; }
+    .answer.correct { border-color: var(--accent-2); background: #ebfff6; }
+    .answer.wrong { border-color: var(--warn); background: #fff1ee; }
+    .feedback { min-height: 28px; margin-top: 14px; font-weight: 700; }
+    .badge { display: inline-block; padding: 6px 10px; border-radius: 999px; background: var(--soft); color: var(--accent); font-size: .9rem; font-weight: 700; }
+    .list { display: grid; gap: 10px; margin-top: 14px; }
+    .mini { padding: 10px 12px; background: #f8faff; border-radius: 12px; line-height: 1.4; }
+    .match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    .match-item { padding: 12px; border-radius: 12px; background: #f8faff; border: 2px solid #e7ecff; cursor: pointer; font-weight: 700; }
+    .match-item.selected { border-color: var(--accent); background: #edf1ff; }
+    .match-item.done { border-color: var(--accent-2); background: #ebfff6; color: #187554; cursor: default; }
+    .hidden { display: none; }
+    .word-box { margin-top: 14px; padding: 14px; border-radius: 14px; background: #f8fbff; border: 2px dashed #d8e3ff; }
+    .tiny { font-size: .9rem; color: #697898; }
+    @media (max-width: 800px) {
+      .grid { grid-template-columns: 1fr; }
+      .match-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <span class="badge">Roots Quest</span>
+      <h1>Greek & Latin Roots Game</h1>
+      <div class="sub">Built from his actual workbook pages so he can practice the same roots and vocab he sees at school. Each level can match one workbook page.</div>
+      <div class="row">
+        <button id="startQuiz">Start Quiz Mode</button>
+        <button id="startMatch" class="secondary">Play Match Mode</button>
+        <button id="startDefinition" class="gold">Definition Challenge</button>
+        <button id="resetAll" class="secondary">Reset Score</button>
+      </div>
+      <div class="row">
+        <label for="setPicker"><b>Choose root set:</b></label>
+        <select id="setPicker"></select>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="panel"><div id="score" class="big">0</div><div class="label">Points</div></div>
+      <div class="panel"><div id="streak" class="big">0</div><div class="label">Streak</div></div>
+      <div class="panel"><div id="level" class="big">1</div><div class="label">Level</div></div>
+      <div class="panel"><div id="mastered" class="big">0</div><div class="label">Roots Mastered</div></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row" style="justify-content: space-between; align-items: center;">
+          <h2 id="modeTitle">Quiz Mode</h2>
+          <span id="currentRoot" class="badge">Root</span>
+        </div>
+
+        <div id="quizMode">
+          <div id="question" class="question">Press Start Quiz Mode to begin.</div>
+          <div id="answers" class="answers"></div>
+          <div id="feedback" class="feedback"></div>
+          <div id="wordBox" class="word-box hidden"></div>
+          <div class="row" style="margin-top: 14px;">
+            <button id="nextBtn" class="green" disabled>Next Question</button>
+          </div>
+        </div>
+
+        <div id="matchMode" class="hidden">
+          <div class="question">Tap one <b>word</b> and then its <b>definition</b>. Match all of them to win the round!</div>
+          <div class="match-grid">
+            <div>
+              <h3>Words</h3>
+              <div id="rootColumn" class="list"></div>
+            </div>
+            <div>
+              <h3>Definitions</h3>
+              <div id="meaningColumn" class="list"></div>
+            </div>
+          </div>
+          <div id="matchFeedback" class="feedback"></div>
+          <div class="row" style="margin-top: 14px;">
+            <button id="newMatchRound" class="green">New Match Round</button>
+          </div>
+        </div>
+
+        <div id="definitionMode" class="hidden">
+          <div id="definitionQuestion" class="question"></div>
+          <div id="definitionAnswers" class="answers"></div>
+          <div id="definitionFeedback" class="feedback"></div>
+          <div class="row" style="margin-top: 14px;">
+            <button id="nextDefinitionBtn" class="green" disabled>Next Challenge</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Workbook Helper</h2>
+        <div class="sub" style="margin-top: 8px;">This list matches the workbook pages you sent.</div>
+        <div id="helperList" class="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rootSets = [
+      {
+        key: 'junct',
+        title: 'Level 1 — junct, join, jug',
+        root: 'junct, join, jug',
+        meaning: 'join / meet / link',
+        words: [
+          { word: 'conjunction', definition: 'a word that joins two phrases or sentences' },
+          { word: 'disjointed', definition: 'not connected; having no flow in thinking' },
+          { word: 'jugular', definition: 'a vein that carries blood back to the heart from the head; a vein that joins the head and the heart' },
+          { word: 'junction', definition: 'the place where two highways or two sets of railroad tracks cross or join' },
+          { word: 'join', definition: 'to get together or meet; to become included' },
+          { word: 'conjoined', definition: 'joined together; combined; united' },
+          { word: 'joint', definition: 'a place or part of the body where two bones join together, usually so they can move' },
+          { word: 'conjugate', definition: 'to join together or match a correct verb in grammar' },
+          { word: 'joint committee', definition: 'a committee with members from both the Senate and the House of Representatives who join together and meet to discuss issues' },
+          { word: 'rejoin', definition: 'to meet or get together again' }
+        ]
+      },
+      {
+        key: 'rupt',
+        title: 'Level 2 — rupt',
+        root: 'rupt',
+        meaning: 'break / burst',
+        words: [
+          { word: 'corrupt', definition: 'evil; dishonest; to break away from honesty' },
+          { word: 'interruption', definition: 'something that breaks up what you were doing; an unplanned event that breaks up an activity' },
+          { word: 'disrupt', definition: 'to break up; to cause confusion' },
+          { word: 'erupt', definition: 'to explode; to break out with force' },
+          { word: 'corruptible', definition: 'able to be influenced into doing something that breaks away from the rules; able to become bad' },
+          { word: 'rupture', definition: 'to burst or break open (usually a body part)' },
+          { word: 'interrupt', definition: 'to break into someone’s conversation' },
+          { word: 'disruption', definition: 'something that breaks someone’s concentration; bothersome; annoying' },
+          { word: 'abrupt', definition: 'sudden; unexpected; broken into what is expected' },
+          { word: 'bankrupt', definition: 'to be out of money; financially ruined; to break the bank' }
+        ]
+      },
+      {
+        key: 'graph',
+        title: 'graph = writing',
+        root: 'graph',
+        meaning: 'writing',
+        words: [
+          { word: 'autobiography', definition: 'writing about a person’s life written by that person' },
+          { word: 'autograph', definition: 'the writing of one’s own name' },
+          { word: 'bibliography', definition: 'the written list of all the books used in a report or book' },
+          { word: 'biography', definition: 'a book written about a person’s life' },
+          { word: 'cartography', definition: 'mapmaking; the writing involved in making maps or charts' },
+          { word: 'homograph', definition: 'a word written the same way as another word but with a different meaning' },
+          { word: 'paragraph', definition: 'a section of writing that has a topic and concluding sentence' },
+          { word: 'phonograph', definition: 'a device that turns the writing on records into sound' },
+          { word: 'photography', definition: 'the use of light to record an image using a camera' },
+          { word: 'seismograph', definition: 'a device that writes down the movements of the earth' }
+        ]
+      },
+      {
+        key: 'scrib',
+        title: 'scrib, script = write',
+        root: 'scrib, script',
+        meaning: 'write',
+        words: [
+          { word: 'describe', definition: 'to say or write down how something or someone looks; to use adjectives in writing' },
+          { word: 'inscription', definition: 'a short dedication written in a book or engraved on something' },
+          { word: 'manuscript', definition: 'a piece of writing; a book' },
+          { word: 'postscript', definition: 'P.S.; a short bit of writing added after a letter is finished' },
+          { word: 'prescription', definition: 'a piece of paper written by a doctor that lets you get medicine at the pharmacy' },
+          { word: 'scribble', definition: 'sloppy writing that is hard to read' },
+          { word: 'scribe', definition: 'a person who writes things down' },
+          { word: 'script', definition: 'a set of papers with writing that will be read and acted out' },
+          { word: 'subscription', definition: 'a written agreement to buy and read a magazine or newspaper for a set period of time' },
+          { word: 'transcribe', definition: 'to write down or record; to translate' }
+        ]
+      },
+      {
+        key: 'cred',
+        title: 'cred = believe',
+        root: 'cred',
+        meaning: 'believe',
+        words: [
+          { word: 'credible', definition: 'believable; reliable' },
+          { word: 'incredible', definition: 'not believable; improbable; unlikely' },
+          { word: 'creditor', definition: 'a person who believes that he will be paid back the money that he loaned' },
+          { word: 'incredulous', definition: 'doubting; unwilling or unable to believe' },
+          { word: 'accreditation', definition: 'granting approval or belief in a school' },
+          { word: 'credulous', definition: 'tending to believe too easily; easily convinced; easily fooled' },
+          { word: 'creed', definition: 'a set of religious beliefs or principles' },
+          { word: 'credential', definition: 'a document that proves a person is believable' },
+          { word: 'credit', definition: 'to believe that someone will do something' },
+          { word: 'discredit', definition: 'to refuse to believe; to reject as untrue' }
+        ]
+      },
+      {
+        key: 'jur',
+        title: 'jur, jus, jud',
+        root: 'jur, jus, jud',
+        meaning: 'law / justice',
+        words: [
+          { word: 'justify', definition: 'to prove; to offer' },
+          { word: 'justice', definition: 'fairness; rightfulness' },
+          { word: 'judge', definition: 'a person chosen to interpret laws, decide on a winner, or settle a controversy' },
+          { word: 'perjury', definition: 'to break the law by lying; to break a formal promise; to break an oath' },
+          { word: 'jurist', definition: 'an expert in law' },
+          { word: 'justification', definition: 'the fact that is said to prove that something is true' },
+          { word: 'abjure', definition: 'to give up rights; to recant' },
+          { word: 'just', definition: 'lawful; fair' },
+          { word: 'jury', definition: 'a group of people sworn to abide by the laws to determine the truth' },
+          { word: 'jurisdiction', definition: 'the territory or land in which justice and laws are administered and followed' }
+        ]
+      },
+      {
+        key: 'bene',
+        title: 'ben, bene, bon = good, well',
+        root: 'ben, bene, bon',
+        meaning: 'good / well',
+        words: [
+          { word: 'benediction', definition: 'a good blessing in a religious service' },
+          { word: 'benefactor', definition: 'a good person who offers help or donates money' },
+          { word: 'beneficial', definition: 'having a good outcome; favorable' },
+          { word: 'beneficiary', definition: 'a person who receives something good from someone else such as an inheritance' },
+          { word: 'benefit', definition: 'to gain or receive good results from something' },
+          { word: 'benevolent', definition: 'kind; good-hearted' },
+          { word: 'benign', definition: 'favorable; having a good effect; not harmful' },
+          { word: 'bonafide', definition: 'in good faith; authentic; genuine; real' },
+          { word: 'bonus', definition: 'anything good that is received over and beyond what was expected' },
+          { word: 'bon voyage', definition: 'French for have a good trip' }
+        ]
+      },
+      {
+        key: 'mal',
+        title: 'mal, male = bad; abnormal; worse',
+        root: 'mal, male',
+        meaning: 'bad / worse',
+        words: [
+          { word: 'dismal', definition: 'depressing; causing gloom or misery; causing bad feelings' },
+          { word: 'malady', definition: 'bad health; illness; sickness' },
+          { word: 'malaria', definition: 'bad air; a disease usually spread by infected mosquitoes' },
+          { word: 'malefactor', definition: 'an evildoer; a person who does bad things' },
+          { word: 'malevolent', definition: 'a word that describes a person or character who wishes bad things would happen to others' },
+          { word: 'malfeasance', definition: 'wrongdoing or bad conduct by a public official' },
+          { word: 'malice', definition: 'mischief; evil intent; bad will' },
+          { word: 'malignant', definition: 'harmful; something bad enough that it could result in death when related to cancer' },
+          { word: 'malnourished', definition: 'having bad health or having poor nutrition' },
+          { word: 'malodorous', definition: 'bad smell; stinky' }
+        ]
+      },
+      {
+        key: 'bio',
+        title: 'bio = life',
+        root: 'bio',
+        meaning: 'life',
+        words: [
+          { word: 'biography', definition: 'a piece of writing about a person’s life written by someone else' },
+          { word: 'antibiotic', definition: 'a medicine used to save lives because it destroys harmful bacteria and cures infections' },
+          { word: 'biologist', definition: 'a person who studies living things' },
+          { word: 'biosphere', definition: 'the zone of planet Earth where there is life' },
+          { word: 'neurobiology', definition: 'the study of the nervous system of living things and how it helps them learn and react' },
+          { word: 'symbiosis', definition: 'how two different living organisms live together and depend on each other' },
+          { word: 'biology', definition: 'the study of living things' },
+          { word: 'macrobiotic diet', definition: 'a diet thought to help people live longer because it focuses on natural foods' },
+          { word: 'biopsy', definition: 'the removal of living tissue from the body for diagnostic examination' },
+          { word: 'autobiography', definition: 'a piece of writing written by a person about his or her own life' }
+        ]
+      },
+      {
+        key: 'vit',
+        title: 'vit, viv = life',
+        root: 'vit, viv',
+        meaning: 'life',
+        words: [
+          { word: 'revive', definition: 'to bring back to life again' },
+          { word: 'vital', definition: 'necessary or essential to life' },
+          { word: 'vivacious', definition: 'full of life; fun; lively; animated' },
+          { word: 'survivor', definition: 'a person who lives through a difficult event or experience' },
+          { word: 'revitalize', definition: 'to bring something back after it declined in condition or popularity; to breathe new life into something' },
+          { word: 'vivid', definition: 'as big as life; brightly colored; daring' },
+          { word: 'vivisection', definition: 'surgery on living animals; medical research that involves cutting into animals to study organs, parts, or diseases' },
+          { word: 'survival', definition: 'the ability to continue living' },
+          { word: 'vitality', definition: 'quality or state of being full of life; state of being full of energy' },
+          { word: 'vitamin', definition: 'a tablet of substances that are thought to promote a healthy life' }
+        ]
+      },
+      {
+        key: 'flex',
+        title: 'flect, flex = bend',
+        root: 'flect, flex',
+        meaning: 'bend',
+        words: [
+          { word: 'circumflex', definition: 'to bend around or curve' },
+          { word: 'deflect', definition: 'to turn or move to one side; to bend; to swerve' },
+          { word: 'flexible', definition: 'capable of bending without breaking' },
+          { word: 'flexor', definition: 'a muscle that bends a part of the body, such as an arm or a leg' },
+          { word: 'inflection', definition: 'the bending of a person’s voice so that it does not sound boring or within only one tone; making one’s voice go up and down' },
+          { word: 'inflexible', definition: 'not capable of being bent without breaking' },
+          { word: 'reflect', definition: 'to bend or throw back light or heat; to fold or turn back' },
+          { word: 'reflection', definition: 'the image in a mirror that is a result of bending light when it is thrown back' },
+          { word: 'reflex angle', definition: 'an angle that is greater than 180 degrees because the angle is bent beyond the straight line' },
+          { word: 'retroflex', definition: 'bent or turned backward' }
+        ]
+      },
+      {
+        key: 'frag',
+        title: 'frail, fract, frag = break; shatter',
+        root: 'frail, fract, frag',
+        meaning: 'break / shatter',
+        words: [
+          { word: 'fractals', definition: 'the type of geometry that creates broken patterns out of a smaller version of a design' },
+          { word: 'fraction', definition: 'a part of a whole; a broken piece of something that is no longer whole' },
+          { word: 'fracture', definition: 'a break in a part of the body' },
+          { word: 'fragile', definition: 'so delicate that it could break easily; easily damaged' },
+          { word: 'fragment', definition: 'an incomplete sentence; a break in a sentence' },
+          { word: 'fragmented', definition: 'describes something that is broken into pieces' },
+          { word: 'frail', definition: 'being easily broken or destroyed' },
+          { word: 'infraction', definition: 'a broken rule; a violation' },
+          { word: 'refract', definition: 'to bend light so that it looks like it is broken' },
+          { word: 'suffrage', definition: 'to break into an issue; to vote' }
+        ]
+      }
+    ];
+
+    let score = 0;
+    let streak = 0;
+    let level = 1;
+    let mastered = new Set();
+    let currentSetIndex = 0;
+    let currentQuestion = null;
+    let quizAnswered = false;
+    let currentMode = 'quiz';
+    let definitionQuestion = null;
+    let definitionAnswered = false;
+
+    const scoreEl = document.getElementById('score');
+    const streakEl = document.getElementById('streak');
+    const levelEl = document.getElementById('level');
+    const masteredEl = document.getElementById('mastered');
+    const questionEl = document.getElementById('question');
+    const answersEl = document.getElementById('answers');
+    const feedbackEl = document.getElementById('feedback');
+    const currentRootEl = document.getElementById('currentRoot');
+    const nextBtn = document.getElementById('nextBtn');
+    const helperList = document.getElementById('helperList');
+    const quizMode = document.getElementById('quizMode');
+    const matchMode = document.getElementById('matchMode');
+    const definitionMode = document.getElementById('definitionMode');
+    const modeTitle = document.getElementById('modeTitle');
+    const rootColumn = document.getElementById('rootColumn');
+    const meaningColumn = document.getElementById('meaningColumn');
+    const matchFeedback = document.getElementById('matchFeedback');
+    const wordBox = document.getElementById('wordBox');
+    const setPicker = document.getElementById('setPicker');
+    const definitionQuestionEl = document.getElementById('definitionQuestion');
+    const definitionAnswersEl = document.getElementById('definitionAnswers');
+    const definitionFeedbackEl = document.getElementById('definitionFeedback');
+    const nextDefinitionBtn = document.getElementById('nextDefinitionBtn');
+
+    function currentSet() {
+      return rootSets[currentSetIndex];
+    }
+
+    function shuffle(arr) {
+      return [...arr].sort(() => Math.random() - 0.5);
+    }
+
+    function updateStats() {
+      scoreEl.textContent = score;
+      streakEl.textContent = streak;
+      levelEl.textContent = level;
+      masteredEl.textContent = mastered.size;
+    }
+
+    function renderSetPicker() {
+      setPicker.innerHTML = '';
+      rootSets.forEach((set, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = set.title;
+        setPicker.appendChild(option);
+      });
+      setPicker.value = currentSetIndex;
+    }
+
+    function renderHelper() {
+      helperList.innerHTML = '';
+      const set = currentSet();
+      set.words.slice(0, 10).forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'mini';
+        div.innerHTML = `<b>${item.word}</b><br><span style="color:#62708f">${item.definition}</span>`;
+        helperList.appendChild(div);
+      });
+    }
+
+    function pickQuestion() {
+      const set = currentSet();
+      const word = set.words[Math.floor(Math.random() * set.words.length)];
+      const wrong = shuffle(rootSets.filter(s => s.root !== set.root)).slice(0, 3).map(s => s.meaning);
+      const choices = shuffle([set.meaning, ...wrong]);
+      currentQuestion = { set, word, choices };
+      quizAnswered = false;
+
+      currentRootEl.textContent = set.root;
+      questionEl.innerHTML = `What does the root <b>${set.root}</b> mean?<br><span class="tiny">Workbook word: <b>${word.word}</b></span>`;
+      answersEl.innerHTML = '';
+      feedbackEl.textContent = '';
+      nextBtn.disabled = true;
+      wordBox.classList.add('hidden');
+
+      choices.forEach(choice => {
+        const btn = document.createElement('button');
+        btn.className = 'answer';
+        btn.textContent = choice;
+        btn.addEventListener('click', () => answerQuestion(btn, choice));
+        answersEl.appendChild(btn);
+      });
+    }
+
+    function answerQuestion(btn, choice) {
+      if (quizAnswered) return;
+      quizAnswered = true;
+      const correct = currentQuestion.set.meaning;
+      const buttons = [...answersEl.querySelectorAll('.answer')];
+      buttons.forEach(b => {
+        if (b.textContent === correct) b.classList.add('correct');
+        if (b === btn && choice !== correct) b.classList.add('wrong');
+        b.disabled = true;
+      });
+
+      if (choice === correct) {
+        score += 10 + (streak * 2);
+        streak += 1;
+        if (streak % 3 === 0) level += 1;
+        mastered.add(currentQuestion.set.root);
+        feedbackEl.textContent = `Nice! ${currentQuestion.set.root} means “${correct}.”`;
+        feedbackEl.style.color = '#197a57';
+      } else {
+        streak = 0;
+        feedbackEl.textContent = `Good try! ${currentQuestion.set.root} means “${correct}.”`;
+        feedbackEl.style.color = '#c25444';
+      }
+
+      wordBox.innerHTML = `<b>${currentQuestion.word.word}</b><br>${currentQuestion.word.definition}`;
+      wordBox.classList.remove('hidden');
+      updateStats();
+      nextBtn.disabled = false;
+    }
+
+    function showQuiz() {
+      currentMode = 'quiz';
+      modeTitle.textContent = 'Quiz Mode';
+      quizMode.classList.remove('hidden');
+      matchMode.classList.add('hidden');
+      definitionMode.classList.add('hidden');
+      pickQuestion();
+    }
+
+    let selectedRoot = null;
+    let selectedMeaning = null;
+    let matched = 0;
+    let matchPairs = [];
+
+    function setupMatchRound() {
+      currentMode = 'match';
+      const set = currentSet();
+      modeTitle.textContent = 'Match Mode';
+      quizMode.classList.add('hidden');
+      matchMode.classList.remove('hidden');
+      definitionMode.classList.add('hidden');
+      currentRootEl.textContent = set.root;
+      selectedRoot = null;
+      selectedMeaning = null;
+      matched = 0;
+      matchFeedback.textContent = '';
+
+      matchPairs = shuffle(set.words).slice(0, 6);
+      rootColumn.innerHTML = '';
+      meaningColumn.innerHTML = '';
+
+      shuffle(matchPairs).forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'match-item';
+        div.textContent = item.word;
+        div.addEventListener('click', () => selectRoot(div, item));
+        rootColumn.appendChild(div);
+      });
+
+      shuffle(matchPairs).forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'match-item';
+        div.textContent = item.definition;
+        div.addEventListener('click', () => selectMeaning(div, item));
+        meaningColumn.appendChild(div);
+      });
+    }
+
+    function clearSelections() {
+      [...document.querySelectorAll('.match-item')].forEach(el => {
+        if (!el.classList.contains('done')) el.classList.remove('selected');
+      });
+    }
+
+    function selectRoot(el, item) {
+      if (el.classList.contains('done')) return;
+      if (selectedRoot && selectedRoot.el !== el) selectedRoot.el.classList.remove('selected');
+      el.classList.add('selected');
+      selectedRoot = { el, item };
+      if (selectedMeaning) checkMatch();
+    }
+
+    function selectMeaning(el, item) {
+      if (el.classList.contains('done')) return;
+      if (selectedMeaning && selectedMeaning.el !== el) selectedMeaning.el.classList.remove('selected');
+      el.classList.add('selected');
+      selectedMeaning = { el, item };
+      if (selectedRoot) checkMatch();
+    }
+
+    function checkMatch() {
+      if (selectedRoot.item.word === selectedMeaning.item.word) {
+        selectedRoot.el.classList.add('done');
+        selectedMeaning.el.classList.add('done');
+        selectedRoot.el.classList.remove('selected');
+        selectedMeaning.el.classList.remove('selected');
+        matched += 1;
+        score += 8;
+        mastered.add(currentSet().root);
+        matchFeedback.textContent = `Correct! ${selectedRoot.item.word} matched.`;
+        matchFeedback.style.color = '#197a57';
+        if (matched === matchPairs.length) {
+          streak += 1;
+          score += 15;
+          matchFeedback.textContent = 'You matched them all! Great job!';
+        }
+      } else {
+        streak = 0;
+        matchFeedback.textContent = 'Not quite — try again.';
+        matchFeedback.style.color = '#c25444';
+        setTimeout(() => {
+          selectedRoot?.el.classList.remove('selected');
+          selectedMeaning?.el.classList.remove('selected');
+        }, 500);
+      }
+      selectedRoot = null;
+      selectedMeaning = null;
+      updateStats();
+    }
+
+    function startDefinitionChallenge() {
+      currentMode = 'definition';
+      const set = currentSet();
+      modeTitle.textContent = 'Definition Challenge';
+      quizMode.classList.add('hidden');
+      matchMode.classList.add('hidden');
+      definitionMode.classList.remove('hidden');
+      currentRootEl.textContent = set.root;
+      makeDefinitionQuestion();
+    }
+
+    function makeDefinitionQuestion() {
+      const set = currentSet();
+      const item = set.words[Math.floor(Math.random() * set.words.length)];
+      const wrong = shuffle(set.words.filter(w => w.word !== item.word)).slice(0, 3).map(w => w.word);
+      const choices = shuffle([item.word, ...wrong]);
+      definitionQuestion = { item, choices };
+      definitionAnswered = false;
+      definitionQuestionEl.innerHTML = `Which workbook word matches this definition?<br><span class="tiny">${item.definition}</span>`;
+      definitionAnswersEl.innerHTML = '';
+      definitionFeedbackEl.textContent = '';
+      nextDefinitionBtn.disabled = true;
+
+      choices.forEach(choice => {
+        const btn = document.createElement('button');
+        btn.className = 'answer';
+        btn.textContent = choice;
+        btn.addEventListener('click', () => answerDefinition(btn, choice));
+        definitionAnswersEl.appendChild(btn);
+      });
+    }
+
+    function answerDefinition(btn, choice) {
+      if (definitionAnswered) return;
+      definitionAnswered = true;
+      const correct = definitionQuestion.item.word;
+      const buttons = [...definitionAnswersEl.querySelectorAll('.answer')];
+      buttons.forEach(b => {
+        if (b.textContent === correct) b.classList.add('correct');
+        if (b === btn && choice !== correct) b.classList.add('wrong');
+        b.disabled = true;
+      });
+
+      if (choice === correct) {
+        score += 12;
+        streak += 1;
+        mastered.add(currentSet().root);
+        definitionFeedbackEl.textContent = `Yes! ${correct} is the right answer.`;
+        definitionFeedbackEl.style.color = '#197a57';
+      } else {
+        streak = 0;
+        definitionFeedbackEl.textContent = `The correct answer is ${correct}.`;
+        definitionFeedbackEl.style.color = '#c25444';
+      }
+      updateStats();
+      nextDefinitionBtn.disabled = false;
+    }
+
+    function onSetChange() {
+      currentSetIndex = Number(setPicker.value);
+      renderHelper();
+      if (currentMode === 'quiz') showQuiz();
+      else if (currentMode === 'match') setupMatchRound();
+      else startDefinitionChallenge();
+    }
+
+    document.getElementById('startQuiz').addEventListener('click', showQuiz);
+    document.getElementById('startMatch').addEventListener('click', setupMatchRound);
+    document.getElementById('startDefinition').addEventListener('click', startDefinitionChallenge);
+    document.getElementById('nextBtn').addEventListener('click', pickQuestion);
+    document.getElementById('newMatchRound').addEventListener('click', setupMatchRound);
+    nextDefinitionBtn.addEventListener('click', makeDefinitionQuestion);
+    setPicker.addEventListener('change', onSetChange);
+    document.getElementById('resetAll').addEventListener('click', () => {
+      score = 0; streak = 0; level = 1; mastered = new Set();
+      updateStats();
+      renderHelper();
+      if (currentMode === 'quiz') showQuiz();
+      else if (currentMode === 'match') setupMatchRound();
+      else startDefinitionChallenge();
+    });
+
+    renderSetPicker();
+    renderHelper();
+    updateStats();
+    showQuiz();
+  </script>
+</body>
+</html>
